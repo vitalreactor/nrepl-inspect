@@ -30,11 +30,19 @@ Example ~/.lein/profiles.clj
 
 ## Usage
 
-- C-c C-i on any variable will inspect that variable
-- Tab and Shift-Tab navigate inspectable sub-objects
-- Return to navigate into sub-object
-- 'l' to return to parent
-- 'g' to refresh
+- C-c C-i on any expression, will prompt to accept
+    - If empty, type any expression to inspect result
+    - Evaluation happens in buffer namespace
+- 'Tab' and 'Shift-Tab' navigate inspectable sub-objects
+- 'Return' to inspect sub-objects
+- 'l' to pop to the parent object
+- 'g' to refresh the inspector (e.g. if viewing an atom/ref/agent)
+
+You can extend the inspector by adding a new method for inspector.inspect/inspect.  (See inspector.ext.datomic for example).  To load all extensions with the inspector.ext.* prefix:
+
+```clj
+(inspector.middleware/load-extensions)
+```
 
 
 ```clj
@@ -60,13 +68,14 @@ inspect.clj for examples.
 ## TODO
 
 High Priority:
-- Example extension and loader (per technomancy's suggestion)
-    - Search classpath for: inspector.ext.*
-    - Load any sub-packages
-    - Sub-packages depend on inspector namespace, extend inspect
-    - e.g. (defun inspector.ext.datomic/inspect datomic.Entity [inspector entity])
 - Paging for long sequences
 - Needs a good test suite!
+- Automatically use extension loader (per technomancy's suggestion)
+    - Search classpath for: inspector.ext.* (DONE)
+    - Load any sub-packages (DONE)
+    - Sub-packages depend on inspector namespace, extend inspect (SEE inspect.ext.*)
+    - e.g. (defun inspector.ext.datomic/inspect datomic.query.EntityMap [inspector entity])
+    - Problem: this will pull in example inspect/ext/datomic.clj
 
 Future tasks:
 - Evaluation and editing
