@@ -11,13 +11,22 @@
 ;; I'm not sure if I should be hard-coding the decision to inspect the
 ;; var for macros and functions. Yet, in my opinion, the vars have
 ;; more valuable info than the values do in those cases.
+(defn try-eval-in-ns [ns expr]
+  {:pre [(symbol? ns) (string? expr)]}
+  (when-let [ns (find-ns ns)]
+    (try
+      (binding [*ns* ns] (eval (read-string expr)))
+      (catch java.lang.Throwable e
+        (clojure.stacktrace/print-stack-trace e)
+        nil))))
+
 (defn lookup
   [ns expr]
   (let [hist? (= (first expr) \*)
         sym (symbol expr)
-        ns (symbol ns)
+        ns  (symbol ns)
         val (or (and hist? (ns-resolve (symbol "clojure.core") sym)) ;; *1/*2/*3
-                (try (eval (read-string expr)) (catch java.lang.Throwable e nil))
+                (try-eval-in-ns ns expr)
                 (find-ns sym) ;; is namespace
                 (and (namespace sym) (resolve sym)) ;; is a fully qualified sym
                 (ns-resolve ns sym))] ;; lookup in current ns
@@ -26,6 +35,8 @@
           val ;; aesthetic call, if class/ns/macro or fn show var
           (instance? clojure.lang.ARef val)
           @val ;; deref if ARef (e.g. Var)
+          (nil? val)
+          (throw (java.lang.Throwable.))
           :default
           val ;; otherwise, show var value
           )))
@@ -45,7 +56,7 @@
      :default nil)
     (catch java.lang.Throwable e
       (clojure.stacktrace/print-stack-trace e)
-      (assoc inspector :rendered '("Unable to inspect: " (str sym))))))
+      (assoc inspector :rendered (list "Unable to inspect: " sym)))))
 
 (def ^:private current-inspector (atom nil))
 
