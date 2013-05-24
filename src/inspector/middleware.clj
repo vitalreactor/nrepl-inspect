@@ -17,13 +17,20 @@
     (if (or (instance? Class var) (instance? clojure.lang.Namespace var)
             (:macro (meta var)) (fn? @var))
       var
-      (:value @var))))
+      (when var
+        @var))))
 
 (defn inspector-op [inspector {:keys [session op ns sym idx] :as msg}]
   (try
     (cond
      ;; new 
-     (= op "inspect-start") (inspect/start inspector (lookup (symbol ns) (symbol sym)))
+     (= op "inspect-start")
+     (let [val (lookup (symbol ns) (symbol sym))
+           ref {:type :var :ns ns :sym sym}]
+       (inspect/start (assoc inspector :reference ref)
+                      (lookup (symbol ns) (symbol sym))))
+     (= op "inspect-refresh")
+     (inspect/start inspector (:value inspector))
      (= op "inspect-pop")    (inspect/up inspector)
      (= op "inspect-push")  (inspect/down inspector (Integer/parseInt idx))
      (= op "inspect-reset") (inspect/clear inspector)

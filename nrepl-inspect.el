@@ -18,8 +18,9 @@
 ;;  ("e" 'nrepl-inspector-eval)
 ;;  ("h" 'slime-inspector-history)
 ;;  ("v" 'slime-inspector-toggle-verbose)
-	(define-key map [tab] 'slime-inspector-next-inspectable-object)
-	(define-key map "\C-i" 'slime-inspector-next-inspectable-object)
+    (define-key map "g" 'nrepl-inspector-refresh)
+	(define-key map [tab] 'nrepl-inspector-next-inspectable-object)
+	(define-key map "\C-i" 'nrepl-inspector-next-inspectable-object)
 	(define-key map [(shift tab)] 
 	  'nrepl-inspector-previous-inspectable-object) ; Emacs translates S-TAB
 	(define-key map [backtab] 'nrepl-inspector-previous-inspectable-object) ; to BACKTAB on X.
@@ -83,6 +84,12 @@
 (defun nrepl-inspector-push (idx)
   (let ((buffer (nrepl-popup-buffer "*nREPL inspect*" t)))
 	(nrepl-send-request (list "op" "inspect-push" "idx" (number-to-string idx))
+						(nrepl-render-response buffer))))
+
+(defun nrepl-inspector-refresh ()
+  (interactive)
+  (let ((buffer (nrepl-popup-buffer "*nREPL inspect*" t)))
+	(nrepl-send-request (list "op" "inspect-refresh")
 						(nrepl-render-response buffer))))
 
 (defun nrepl-test ()

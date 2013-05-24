@@ -6,10 +6,6 @@ do extensible slime-style object inspection.
 
 ## Usage
 
-```clj
-(require '[inspector.inspect :only [inspect-print]])
-(inspect-print java.io.File)
-```
 
 ```
 Type: class java.lang.Class
@@ -19,6 +15,24 @@ Type: class java.lang.Class
   interface java.lang.Comparable
 [...]
 ```
+
+```clj
+(require '[inspector.inspect :only [inspect-print]])
+(inspect-print java.io.File)
+```
+
+## TODO
+
+High Priority:
+- Example of loading extensions to inspect multimethod for custom types
+  e.g. datomic Entities
+- Paging for long sequences
+- Needs a good test suite!
+
+Future tasks:
+- Evaluation and editing
+- Actions
+
 
 ## License
 

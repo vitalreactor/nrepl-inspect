@@ -14,7 +14,8 @@
 (defn clear
   "Clear an inspector's state"
   [inspector]
-  (reset-index {:value nil :stack [] :rendered '()}))
+  (merge (reset-index inspector)
+         {:value nil :stack [] :rendered '()}))
 
 (defn fresh 
   "Return an empty inspector "
@@ -24,7 +25,6 @@
 (defn start
   "Put a new value onto the inspector stack"
   [inspector value]
-  (println value)
   (-> (clear inspector)
       (inspect-render value)))
 
@@ -55,10 +55,31 @@
 ;;
 ;; Good for method extenders to use
 
-(defn inspect-value [value]
-;;  (cond (some #(% value) [number? string? symbol? keyword?])
-  (pr-str value))
+(defn- atom? [val]
+  (some #(% val) [number? string? symbol? keyword?]))
 
+(defn inspect-value
+  ([value]
+     (cond (atom? value) (pr-str value)
+           (and (map? value) (< (count value) 5)
+                (every? atom? (map second (take 5 value))))
+           (pr-str value)
+           (and (map? value) (atom? (second (first value))))
+           (str "{ " (ffirst value) " " (second (first value)) ", ... }")
+           (map? value)
+           (str "{ ... }")
+           (and (sequential? value) (< (count value) 5))
+           (pr-str value)
+           (and (vector? value) (every? atom? (take 5 value)))
+           (apply str "[ " (concat (map pr-str (take 5 value)) ["... ]"]))
+           (and (list? value) (every? atom? (take 5 value)))
+           (apply str "( " (concat (map pr-str (take 5 value)) ["... )"]))
+           (and (set? value) (every? atom? (take 5 value)))
+           (apply str "#{ " (concat (map pr-str (take 5 value)) ["... }"]))
+           :default
+           (str value))))
+           
+            
 (defn render-onto [inspector coll]
   (update-in inspector [:rendered] concat coll))
 
@@ -85,7 +106,7 @@
 (defn render-indexed-values [inspector obj]
   (reduce (fn [ins [idx val]]
             (-> ins
-                (render "  " idx ". ") 
+                (render "  " (str idx) ". ") 
                 (render-value val)
                 (render '(:newline))))
           inspector
@@ -191,26 +212,39 @@
         (render-ln "Fields: ")
         (render-map-values (zipmap names vals)))))
 
-(defn- inspect-class-section [inspector obj section]
+(defn- render-class-section [inspector obj section]
   (let [method (symbol (str ".get" (name section)))
         elements (eval (list method obj))]
     (if (seq elements)
       `(~(name section) ": " (:newline)
         ~@(mapcat (fn [f] `("  " (:value ~f) (:newline))) elements)))))
 
+(defn- render-section [obj inspector section]
+  (let [method (symbol (str ".get" (name section)))
+        elements (eval (list method obj))]
+    (if-not elements
+      inspector
+      (reduce (fn [ins elt]
+                (-> ins
+                    (render "  ")
+                    (render-value elt)
+                    (render-ln)))
+              (-> inspector
+                  (render-ln)
+                  (render-ln "--- " (name section) ": "))
+              elements))))
+              
 (defmethod inspect :class [inspector ^Class obj]
-  (apply concat (interpose ['(:newline) "--- "]
-                           (cons `("Type: " (:value ~(class obj)) (:newline))
-                                 (for [section [:Interfaces :Constructors
-                                                :Fields :Methods]
-                                       :let [elements (inspect-class-section
-                                                       inspector obj section)]
-                                       :when (seq elements)]
-                                   elements)))))
+  (reduce (partial render-section obj)
+          (render-labeled-value inspector "Type" (class obj))
+          [:Interfaces :Constructors :Fields :Methods]))
 
 (defmethod inspect :aref [inspector ^clojure.lang.ARef obj]
-  `("Type: " (:value ~(class obj)) (:newline)
-    "Value: " (:value ~(deref obj)) (:newline)))
+  (-> inspector
+      (render-labeled-value "Type" (class obj))
+      (render-ln "Contains:")
+      (render-ln)
+      (inspect (deref obj))))
 
 (defn ns-refers-by-ns [inspector ^clojure.lang.Namespace ns]
   (group-by (fn [^clojure.lang.Var v] (. v ns))
@@ -230,11 +264,21 @@
 ;;
 ;; Entry point to inspect a value and get the serialized rep 
 ;;
+(defn render-reference [inspector]
+  (let [{:keys [type ns sym expr]} (:reference inspector)]
+    (println (:reference inspector))
+    (cond (= type :var)
+          (render-ln inspector "Var: \"" ns "/" sym "\"")
+          (= type :expr)
+          (render-ln inspector "Expr: " expr)
+          :default
+          inspector)))
+
 (defn inspect-render [inspector value]
-  (println inspector value)
   (-> (reset-index inspector)
       (assoc :rendered [])
       (assoc :value value)
+      (render-reference)
       (inspect value)))
 
 ;; Get the string serialization of the rendered sequence
