@@ -44,11 +44,13 @@ You can extend the inspector by adding a new method for inspector.inspect/inspec
 (inspector.middleware/load-extensions)
 ```
 
+To use the plaintext inspector at a non-Emacs REPL.
 
 ```clj
 (require '[inspector.inspect :only [inspect-print]])
 (inspect-print java.io.File)
 ```
+Which will return:
 
 ```
 Type: class java.lang.Class
@@ -59,7 +61,7 @@ Type: class java.lang.Class
 [...]
 ```
 
-## Extending
+## Extending the Inspector
 
 You can extend the inspector.inspect/inspect generic function by type
 or using dispatch on the metadata value :inspector-tag.  See
