@@ -43,10 +43,25 @@
 ;; Top level
 ;;
 
-(defun nrepl-inspect ()
-  (interactive)
-  (let ((sym (format "%s" (symbol-at-point))))
-	(nrepl-inspect-sym sym nrepl-buffer-ns)))
+(defvar nrepl-minibuffer-map
+  (let ((map (make-sparse-keymap)))
+	(set-keymap-parent map minibuffer-local-map)
+	(define-key map "\t" 'completion-at-point)
+	(define-key map "\M-\t" 'completion-at-point)
+	map))
+
+(defun nrepl-inspect (string)
+  "Eval an expression and inspect the result"
+  (interactive
+   (list (read-from-minibuffer "Inspect value (evaluated): "
+							   (or (nrepl-sexp-at-point)
+								   (save-excursion
+									 (unless (equal (string (char-before)) " ")
+									   (backward-char)
+									   (nrepl-sexp-at-point))))
+							   nrepl-minibuffer-map
+							   nil '())))
+  (nrepl-inspect-sym string nrepl-buffer-ns))
 
 (defun nrepl-inspect-debug (output)
   (with-current-buffer (get-buffer-create "nrepl-inspect-debug")
@@ -63,7 +78,6 @@
   (nrepl-make-response-handler
    buffer
    (lambda (buffer str)
-	 (message str)
 	 (nrepl-irender buffer str))
    '()
    (lambda (buffer str)
@@ -120,7 +134,6 @@ positions before and after executing BODY."
 (defun nrepl-irender* (elements)
   (setq nrepl-irender-temp elements)
   (dolist (el elements)
-	(message "Element: " el)
 	(nrepl-irender-el* el)))
 
 (defun nrepl-irender-el* (el)
@@ -219,34 +232,22 @@ that value.
 2. If point is on an action then call that action.
 3. If point is on a range-button fetch and insert the range."
   (interactive)
-  (let ((opener (lexical-let ((point (slime-inspector-position)))
-                  (lambda (parts)
-                    (when parts
-                      (slime-open-inspector parts point)))))
-        (new-opener (lambda (parts)
-                      (when parts
-                        (slime-open-inspector parts)))))
-    (destructuring-bind (property value)
-        (nrepl-inspector-property-at-point)
-        (case property
-          (nrepl-value-idx
-           (nrepl-inspector-push value))
-;;           (push (slime-inspector-position) slime-inspector-mark-stack))
-;;          (slime-range-button
-;;           (slime-inspector-fetch-more value))
-;;          (slime-action-number 
-;;           (slime-eval-async `(swank::inspector-call-nth-action ,value)
-;;                             opener))
-          (t (error "No object at point"))))))
+  (destructuring-bind (property value)
+	  (nrepl-inspector-property-at-point)
+	(case property
+	  (nrepl-value-idx
+	   (nrepl-inspector-push value))
+	  ;; TODO: range and action handlers 
+	  (t (error "No object at point")))))
 
 (defun nrepl-inspector-operate-on-click (event)
   "Move to events' position and operate the part."
   (interactive "@e")
   (let ((point (posn-point (event-end event))))
     (cond ((and point
-                (or (get-text-property point 'slime-part-number)
-                    (get-text-property point 'slime-range-button)
-                    (get-text-property point 'slime-action-number)))
+                (or (get-text-property point 'nrepl-value-idx)))
+;;                    (get-text-property point 'nrepl-range-button)
+;;                    (get-text-property point 'nrepl-action-number)))
            (goto-char point)
            (slime-inspector-operate-on-point))
           (t

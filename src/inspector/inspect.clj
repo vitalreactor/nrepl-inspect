@@ -246,7 +246,7 @@
       (render-ln)
       (inspect (deref obj))))
 
-(defn ns-refers-by-ns [inspector ^clojure.lang.Namespace ns]
+(defn ns-refers-by-ns [^clojure.lang.Namespace ns]
   (group-by (fn [^clojure.lang.Var v] (. v ns))
             (map val (ns-refers ns))))
 
@@ -266,9 +266,8 @@
 ;;
 (defn render-reference [inspector]
   (let [{:keys [type ns sym expr]} (:reference inspector)]
-    (println (:reference inspector))
     (cond (= type :var)
-          (render-ln inspector "Var: \"" ns "/" sym "\"")
+          (render-ln inspector "Var: #'" ns "/" sym)
           (= type :expr)
           (render-ln inspector "Expr: " expr)
           :default

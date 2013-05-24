@@ -5,30 +5,36 @@
             [clojure.tools.nrepl.middleware :refer [set-descriptor!]]
             [clojure.tools.nrepl.misc :refer [response-for]]))
 
-;; TODO:
-;; - Access values on this session's repl
 
 ;; I'm not sure if I should be hard-coding the decision to inspect the
 ;; var for macros and functions. Yet, in my opinion, the vars have
 ;; more valuable info than the values do in those cases.
 (defn lookup
-  [ns sym]
-  (let [var (or (find-ns sym) (ns-resolve ns sym))]
-    (if (or (instance? Class var) (instance? clojure.lang.Namespace var)
-            (:macro (meta var)) (fn? @var))
-      var
-      (when var
-        @var))))
+  [ns expr]
+  (let [hist? (= (first expr) \*)
+        sym (symbol expr)
+        ns (symbol ns)
+        val (or (and hist? (ns-resolve (symbol "clojure.core") sym)) ;; *1/*2/*3
+                (try (eval (read-string expr)) (catch java.lang.Throwable e nil))
+                (find-ns sym) ;; is namespace
+                (and (namespace sym) (resolve sym)) ;; is a fully qualified sym
+                (ns-resolve ns sym))] ;; lookup in current ns
+    (cond (or (instance? Class val) (instance? clojure.lang.Namespace val)
+              (:macro (meta val)) (and (instance? clojure.lang.Var val) (fn? @val)))
+          val ;; aesthetic call, if class/ns/macro or fn show var
+          (instance? clojure.lang.ARef val)
+          @val ;; deref if ARef (e.g. Var)
+          :default
+          val ;; otherwise, show var value
+          )))
 
 (defn inspector-op [inspector {:keys [session op ns sym idx] :as msg}]
   (try
     (cond
      ;; new 
      (= op "inspect-start")
-     (let [val (lookup (symbol ns) (symbol sym))
-           ref {:type :var :ns ns :sym sym}]
-       (inspect/start (assoc inspector :reference ref)
-                      (lookup (symbol ns) (symbol sym))))
+     (let [val (lookup ns sym)]
+       (inspect/start inspector val))
      (= op "inspect-refresh")
      (inspect/start inspector (:value inspector))
      (= op "inspect-pop")    (inspect/up inspector)
@@ -36,16 +42,20 @@
      (= op "inspect-reset") (inspect/clear inspector)
      :default nil)
     (catch java.lang.Throwable e
-      (assoc inspector :rendered (list "Rendering error for op: " (str op))))))
+      (clojure.stacktrace/print-stack-trace e)
+      (assoc inspector :rendered '("Unable to inspect: " (str sym))))))
 
 (def ^:private current-inspector (atom nil))
 
 (defn session-inspector-value [{:keys [session] :as msg}]
   (let [inspector (or @current-inspector (inspect/fresh))
         result (inspector-op inspector msg)]
-    (when result
-      (reset! current-inspector result)
-      {:value (inspect/serialize-render result)})))
+    (cond
+     (nil? result) nil
+     (and (:status result) (not= (:status result) :done)) result
+     :default
+     (do (reset! current-inspector result)
+         {:value (inspect/serialize-render result)}))))
 
 (defn wrap-inspect
   [handler]
