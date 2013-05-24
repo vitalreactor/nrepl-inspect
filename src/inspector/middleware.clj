@@ -1,5 +1,7 @@
 (ns inspector.middleware
   (:require [inspector.inspect :as inspect]
+            [clojure.tools.namespace.find :as nsf]
+            [clojure.java.classpath :as cp]
             [clojure.tools.nrepl.transport :as transport]
             [clojure.tools.nrepl.middleware.session :refer [session]]
             [clojure.tools.nrepl.middleware :refer [set-descriptor!]]
@@ -69,3 +71,15 @@
    :handles {"inspect" {:doc "Print the results of inspector.inspect/inspect-print to stdout."
                         :requires {"sym" "Inspect the value bound to this symbol."
                                    "ns" "Resolve the symbol in this namespace."}}}})
+
+
+;; Preliminary support for loading of extension namespaces
+
+(def inspector-prefix-regex #"inspector\.ext\..*")
+
+(defn extension-nspaces []
+  (filter #(re-matches inspector-prefix-regex (name %))
+          (nsf/find-namespaces (cp/classpath))))
+
+(defn load-extensions []
+  (map require (extension-nspaces)))
