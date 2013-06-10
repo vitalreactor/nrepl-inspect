@@ -9,9 +9,7 @@ do extensible slime-style object inspection.
 
 NOTE: We are working to package this for distribution via Clojars and ELPA, bear with us
 
-- Clone this repository to your local system
-- 'lein install'
-- Add [nrepl-inspect "0.3.0-SNAPSHOT"] to profile or project :dependencies
+- Add [nrepl-inspect "0.3.0"] to profile or project :dependencies
 - Add inspector.middleware/wrap-inspect to your :repl-options -> :nrepl-middleware
 - Copy nrepl-inspect.el to your emacs loader path 
 - Add (require 'nrepl-inspect) to your init.el
@@ -20,7 +18,7 @@ Example ~/.lein/profiles.clj
 
 ```clj
 {:user {:plugins [[lein-ritz "0.7.0"]]
-        :dependencies [[nrepl-inspect "0.3.0-SNAPSHOT"]
+        :dependencies [[nrepl-inspect "0.3.0"]
                        [ritz/ritz-nrepl-middleware "0.7.0"]]
         :repl-options {:nrepl-middleware
                        [inspector.middleware/wrap-inspect
