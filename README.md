@@ -1,7 +1,7 @@
 nrepl-inspect
 =============
 
-DEVELOPMENT IS NOW FROZEN ON nrepl-inspect.  Please refer to (clojure-emacs/cider-inspect)[http://github.com/clojure-emacs/cider-inspect] for ongoing inspector development.
+DEVELOPMENT IS NOW FROZEN ON nrepl-inspect.  Please refer to http://github.com/clojure-emacs/cider-inspect for ongoing inspector development.
 
 Successor to javert, provides nrepl middleware and nrepl.el plugin to
 do extensible slime-style object inspection.
