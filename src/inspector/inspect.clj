@@ -135,6 +135,7 @@
 (defn known-types [ins obj]
   (cond
    (map? obj) :map
+   (set? obj) :seq
    (vector? obj) :vector
    (var? obj) :var
    (string? obj) :string
